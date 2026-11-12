@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>إدارة الطلبات</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1><a href="index.html" class="logo">متجري</a></h1>
+    <span>لوحة الطلبات</span>
+  </header>
+
+  <main class="admin">
+    <section class="stats">
+      <div class="stat"><span id="sOrders">0</span><small>عدد الطلبات</small></div>
+      <div class="stat"><span id="sSales">0</span><small>إجمالي المبيعات (درهم)</small></div>
+      <div class="stat"><span id="sNew">0</span><small>طلبات جديدة</small></div>
+      <div class="stat"><span id="sProducts">0</span><small>عدد المنتجات</small></div>
+    </section>
+    <h2>إضافة منتج جديد</h2>
+    <form id="productForm" class="product-form">
+      <input name="name" placeholder="اسم المنتج" required>
+      
+      <select id="catSelect" required></select>
+      <input id="newCat" placeholder="تصنيف جديد" hidden>
+
+      <input name="price" type="number" min="1" placeholder="السعر بالدرهم" required>
+      <input name="description" placeholder="وصف قصير">
+      <input name="image" type="file" accept="image/*">
+      <button class="add" type="submit">إضافة المنتج</button>
+      <p id="formMsg"></p>
+    </form>
+
+    <h2>المنتجات (<span id="pcount">0</span>)</h2>
+    
+    <div id="plist"></div>
+    
+    <h2>الطلبات (<span id="count">0</span>)</h2>
+    <button class="del" id="clearAll">حذف كل الطلبات</button>
+    <div id="orders"></div>
+  </main>
+
+  <script src="products.js"></script>
+  <script src="admin.js"></script>
+</body>
+</html>

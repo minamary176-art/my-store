@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>إتمام الطلب</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1><a href="index.html" class="logo">متجري</a></h1>
+    <a href="index.html" class="back">← رجوع للمتجر</a>
+  </header>
+
+  <main class="checkout">
+    <section id="summary"></section>
+
+    <form id="orderForm">
+      <h2>بيانات التوصيل</h2>
+      <input id="name" placeholder="الاسم الكامل" required>
+      <input id="phone" placeholder="رقم الهاتف" inputmode="tel" required>
+      <input id="address" placeholder="العنوان" required>
+      <div class="coupon">
+        <input id="coupon" placeholder="كود الخصم (اختياري)">
+        <button type="button" class="edit" id="applyCoupon">تطبيق</button>
+      </div>
+      <p id="couponMsg"></p>
+      <button class="add" type="submit">تأكيد الطلب</button>
+    </form>
+
+    <section id="thanks" hidden></section>
+  </main>
+
+  <script src="products.js"></script>
+  <script src="checkout.js"></script>
+</body>
+</html>

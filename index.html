@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>متجري</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>متجري</h1>
+    <input id="search" placeholder="ابحث عن منتج...">
+    <button id="cartBtn">🛒 <span id="cartCount">0</span></button>
+    <a href="track.html" class="back">تتبع طلبك</a>
+  </header>
+
+  <aside id="cart">
+  <div class="cart-top">
+    <h3>السلة</h3>
+    <button id="closeCart">×</button>
+  </div>
+  <div id="cartItems"></div>
+  <div class="cart-total">المجموع: <strong id="cartTotal">0</strong> درهم</div>
+  <a href="checkout.html" class="checout-btn">إتمام الطلب</a>
+  </aside>
+
+  <div id="categories"></div>
+
+  <div class="toolbar">
+  <select id="sort">
+    <option value="default">الترتيب الافتراضي</option>
+    <option value="low">السعر: الأقل أولاً</option>
+    <option value="high">السعر: الأعلى أولاً</option>
+    <option value="rating">الأعلى تقييماً</option>
+  </select>
+  </div>
+
+  <main id="products"></main>
+
+  <div id="more"></div>
+
+  <div id="toast"></div>
+
+  <script src="products.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

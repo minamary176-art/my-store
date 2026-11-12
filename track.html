@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>تتبّع الطلب</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1><a href="index.html" class="logo">متجري</a></h1>
+    <a href="index.html" class="back">← رجوع للمتجر</a>
+  </header>
+
+  <main class="checkout">
+    <h2>تتبّع طلبك</h2>
+    <form id="trackForm">
+      <input id="tNumber" placeholder="رقم الطلب" inputmode="numeric" required>
+      <input id="tPhone" placeholder="رقم الهاتف المستخدم في الطلب" inputmode="tel" required>
+      <button class="add" type="submit">تتبّع</button>
+    </form>
+    <div id="result"></div>
+  </main>
+
+  <script src="track.js"></script>
+</body>
+</html>

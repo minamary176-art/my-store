@@ -1,0 +1,6 @@
+node_modules
+store.db
+store.db-*
+orders.json
+ratings.json
+.env
