@@ -8,7 +8,16 @@ const app = express();
 app.use(express.json());
 
 /* ========== قاعدة البيانات ========== */
-const db = new DatabaseSync(path.join(__dirname, "store.db"));
+const os = require("os");
+
+let DATA_DIR = __dirname;
+try {
+  fs.accessSync(__dirname, fs.constants.W_OK);
+} catch {
+  DATA_DIR = os.tmpdir();   // المجلد الأصلي للقراءة فقط، نستعمل المجلد المؤقت
+}
+
+const db = new DatabaseSync(path.join(DATA_DIR, "store.db"));
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS products (
