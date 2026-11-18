@@ -247,3 +247,10 @@ header input {
 .coupon { display: flex; gap: 8px; }
 .coupon input { margin-bottom: 0; }
 #couponMsg { margin: 6px 0 12px; color: #2e7d32; }
+
+.auth-tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+.auth-tabs button {
+  flex: 1; padding: 10px; border: 1px solid #ccc;
+  border-radius: 8px; background: #fff; cursor: pointer; font-size: 1rem;
+}
+.auth-tabs button.active { background: #febd69; border-color: #febd69; font-weight: bold; }

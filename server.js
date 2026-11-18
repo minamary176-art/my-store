@@ -44,6 +44,7 @@ db.exec(`
 
 try { db.exec("ALTER TABLE orders ADD COLUMN coupon TEXT"); } catch {}
 try { db.exec("ALTER TABLE orders ADD COLUMN discount REAL DEFAULT 0"); } catch {}
+try { db.exec("ALTER TABLE orders ADD COLUMN userId INTEGER"); } catch {}
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS coupons (
@@ -117,6 +118,122 @@ function readOrders() {
   return db.prepare("SELECT * FROM orders ORDER BY number").all()
     .map(o => ({ ...o, items: JSON.parse(o.items) }));
 }
+
+const crypto = require("crypto");
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    email TEXT NOT NULL UNIQUE,
+    password TEXT NOT NULL,
+    created TEXT NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS sessions (
+    token TEXT PRIMARY KEY,
+    userId INTEGER NOT NULL,
+    expires INTEGER NOT NULL
+  );
+`);
+db.prepare("DELETE FROM sessions WHERE expires < ?").run(Date.now());
+
+function hashPassword(pw) {
+  const salt = crypto.randomBytes(16).toString("hex");
+  return salt + ":" + crypto.scryptSync(pw, salt, 64).toString("hex");
+}
+
+function checkPassword(pw, stored) {
+  const [salt, hash] = stored.split(":");
+  const test = crypto.scryptSync(pw, salt, 64);
+  return crypto.timingSafeEqual(test, Buffer.from(hash, "hex"));
+}
+
+const sha = t => crypto.createHash("sha256").update(t).digest("hex");
+
+function getCookie(req, name) {
+  const part = (req.headers.cookie || "").split(";")
+    .map(s => s.trim()).find(s => s.startsWith(name + "="));
+  return part ? part.slice(name.length + 1) : null;
+}
+
+function startSession(req, res, userId) {
+  const token = crypto.randomBytes(32).toString("hex");
+  db.prepare("INSERT INTO sessions (token,userId,expires) VALUES (?,?,?)")
+    .run(sha(token), userId, Date.now() + 7 * 86400000);
+  const secure = req.headers["x-forwarded-proto"] === "https" ? "; Secure" : "";
+  res.setHeader("Set-Cookie",
+    `sid=${token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${7 * 86400}${secure}`);
+}
+
+app.use((req, res, next) => {
+  req.user = null;
+  const token = getCookie(req, "sid");
+  if (token) {
+    const row = db.prepare(
+      "SELECT u.id,u.name,u.email,s.expires FROM sessions s JOIN users u ON u.id = s.userId WHERE s.token = ?"
+    ).get(sha(token));
+    if (row && row.expires > Date.now()) {
+      req.user = { id: row.id, name: row.name, email: row.email };
+    }
+  }
+  next();
+});
+
+const attempts = {};
+function tooMany(key) {
+  const now = Date.now();
+  attempts[key] = (attempts[key] || []).filter(t => now - t < 15 * 60000);
+  return attempts[key].length >= 8;
+}
+
+app.post("/api/register", (req, res) => {
+  const name = String(req.body.name || "").trim().slice(0, 100);
+  const email = String(req.body.email || "").trim().toLowerCase().slice(0, 200);
+  const password = String(req.body.password || "");
+
+  if (!name || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ||
+      password.length < 8 || password.length > 200) {
+    return res.status(400).json({ error: "تأكد من الاسم والبريد، وكلمة السر 8 أحرف على الأقل" });
+  }
+  if (db.prepare("SELECT id FROM users WHERE email = ?").get(email)) {
+    return res.status(409).json({ error: "هذا البريد مسجّل من قبل" });
+  }
+
+  const info = db.prepare(
+    "INSERT INTO users (name,email,password,created) VALUES (?,?,?,?)"
+  ).run(name, email, hashPassword(password), new Date().toISOString());
+
+  startSession(req, res, Number(info.lastInsertRowid));
+  res.json({ ok: true, name });
+});
+
+app.post("/api/login", (req, res) => {
+  const email = String(req.body.email || "").trim().toLowerCase();
+  const password = String(req.body.password || "");
+  const key = req.ip + email;
+
+  if (tooMany(key)) {
+    return res.status(429).json({ error: "محاولات كثيرة، حاول بعد 15 دقيقة" });
+  }
+
+  const u = db.prepare("SELECT * FROM users WHERE email = ?").get(email);
+  if (!u || !checkPassword(password, u.password)) {
+    (attempts[key] = attempts[key] || []).push(Date.now());
+    return res.status(401).json({ error: "البريد أو كلمة السر غير صحيحة" });
+  }
+
+  startSession(req, res, u.id);
+  res.json({ ok: true, name: u.name });
+});
+
+app.post("/api/logout", (req, res) => {
+  const token = getCookie(req, "sid");
+  if (token) db.prepare("DELETE FROM sessions WHERE token = ?").run(sha(token));
+  res.setHeader("Set-Cookie", "sid=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0");
+  res.json({ ok: true });
+});
+
+app.get("/api/me", (req, res) => res.json({ user: req.user }));
 
 /* ========== كلمة سر الإدارة ========== */
 const ADMIN_USER = "admin";
@@ -273,13 +390,13 @@ app.post("/api/orders", (req, res) => {
 
   const number = Date.now();
   db.prepare(
-    "INSERT INTO orders (number,name,phone,address,items,total,status,date,coupon,discount) VALUES (?,?,?,?,?,?,?,?,?,?)"
+    "INSERT INTO orders (number,name,phone,address,items,total,status,date,coupon,discount,userId) VALUES (?,?,?,?,?,?,?,?,?,?,?)"
   ).run(number,
-        String(name).slice(0, 100),
-        String(phone).slice(0, 30),
-        String(address).slice(0, 300),
-        JSON.stringify(clean), total, "جديد", new Date().toISOString(),
-        couponCode, discount);
+      String(name).slice(0, 100),
+      String(phone).slice(0, 30),
+      String(address).slice(0, 300),
+      JSON.stringify(clean), total, "جديد", new Date().toISOString(),
+      couponCode, discount, req.user ? req.user.id : null);
 
   res.json({ ok: true, number, total, discount });
 });
@@ -319,6 +436,16 @@ app.post("/api/track", (req, res) => {
   }
 
   res.json({ number: o.number, status: o.status, total: o.total, date: o.date });
+});
+
+app.get("/api/my-orders", (req, res) => {
+  if (!req.user) return res.status(401).json({ error: "سجّل الدخول أولاً" });
+
+  const rows = db.prepare(
+    "SELECT number,total,status,date,items,coupon,discount FROM orders WHERE userId = ? ORDER BY number DESC"
+  ).all(req.user.id);
+
+  res.json(rows.map(o => ({ ...o, items: JSON.parse(o.items) })));
 });
 
 const PORT = process.env.PORT || 3000;
