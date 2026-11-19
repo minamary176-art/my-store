@@ -53,8 +53,8 @@ db.exec(`
     active INTEGER DEFAULT 1
   )
 `);
-db.prepare("INSERT OR IGNORE INTO coupons (code,percent) VALUES (?,?)").run("save10", 10);
-db.prepare("INSERT OR IGNORE INTO coupons (code,percent) VALUES (?,?)").run("save20", 20);
+db.prepare("INSERT OR IGNORE INTO coupons (code,percent) VALUES (?,?)").run("SAVE10", 10);
+db.prepare("INSERT OR IGNORE INTO coupons (code,percent) VALUES (?,?)").run("SAVE20", 20);
 
 function findCoupon(code) {
   return db.prepare("SELECT * FROM coupons WHERE code = ? AND active = 1")
