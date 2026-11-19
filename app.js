@@ -59,7 +59,10 @@ function renderProducts() {
           </a>
           <p class="stars">${stars(p.rating)} <small>${p.rating}</small></p>
           <strong>${p.price} درهم</strong>
-          <button class="add" onclick="addToCart(${p.id})">أضف إلى السلة</button>
+          ${p.stock > 0
+            ? `${p.stock <= 5 ? `<p class="low">متبقي ${p.stock} فقط</p>` : ""}
+              <button class="add" onclick="addToCart(${p.id})">أضف إلى السلة</button>`
+            : `<button class="add" disabled>نفذت الكمية</button>`}
         </article>`).join("")
     : "<p>لا توجد نتائج.</p>";
 
@@ -101,12 +104,22 @@ function saveCart() {
 }
 
 function addToCart(id) {
+  const p = products.find(x => x.id === id);
+  if (!p || (cart[id] || 0) >= p.stock) {
+    showToast("الكمية المتاحة محدودة");
+    return;
+  }
   cart[id] = (cart[id] || 0) + 1;
   renderCart();
   showToast("تمت الإضافة إلى السلة ✓");
 }
 
 function changeQty(id, step) {
+  const p = products.find(x => x.id == id);
+  if (step > 0 && p && cart[id] >= p.stock) {
+    showToast("وصلت للحد الأقصى المتاح");
+    return;
+  }
   cart[id] += step;
   if (cart[id] <= 0) delete cart[id];
   renderCart();

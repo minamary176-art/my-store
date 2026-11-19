@@ -100,7 +100,7 @@ async function loadProducts() {
                onerror="this.onerror=null;this.src='image/placeholder.jpeg'">
           <div class="pinfo">
             <strong>${esc(p.name)}</strong>
-            <small>${esc(p.category)} · ${esc(p.price)} درهم</small>
+            <small>${esc(p.category)} · ${esc(p.price)} درهم · المخزون: ${esc(p.stock)}</small>
           </div>
           <button class="edit" onclick="editProduct(${p.id})">تعديل</button>
           <button class="del" onclick="deleteProduct(${p.id})">حذف</button>
@@ -145,10 +145,13 @@ async function editProduct(id) {
   const price = prompt("السعر بالدرهم:", p.price);
   if (price === null) return;
 
+  const stock = prompt("الكمية المتاحة:", p.stock);
+  if (stock === null) return;
+
   await fetch("/api/products/" + id, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name, price })
+    body: JSON.stringify({ name, price, stock })
   });
 
   loadProducts();
@@ -174,3 +177,87 @@ async function setStatus(number, status) {
   });
   loadOrders();
 }
+
+const clist = document.getElementById("clist");
+
+async function loadCoupons() {
+  const res = await fetch("/api/coupons");
+  const items = await res.json();
+
+  clist.innerHTML = items.length
+    ? items.map(c => `
+        <div class="prow">
+          <div class="pinfo">
+            <strong>${esc(c.code)}</strong>
+            <small>خصم ${esc(c.percent)}% · ${c.active ? "مفعّل" : "متوقف"}</small>
+          </div>
+          <button class="edit" onclick="toggleCoupon('${esc(c.code)}', ${c.active ? 0 : 1})">
+            ${c.active ? "إيقاف" : "تفعيل"}
+          </button>
+          <button class="del" onclick="deleteCoupon('${esc(c.code)}')">حذف</button>
+        </div>`).join("")
+    : "<p>لا توجد كوبونات.</p>";
+}
+
+async function toggleCoupon(code, active) {
+  await fetch("/api/coupons/" + encodeURIComponent(code), {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ active: !!active })
+  });
+  loadCoupons();
+}
+
+async function deleteCoupon(code) {
+  if (!confirm("حذف الكوبون " + code + "؟")) return;
+  await fetch("/api/coupons/" + encodeURIComponent(code), { method: "DELETE" });
+  loadCoupons();
+}
+
+document.getElementById("couponForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const msg = document.getElementById("cMsg");
+
+  const res = await fetch("/api/coupons", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      code: document.getElementById("cCode").value,
+      percent: document.getElementById("cPercent").value
+    })
+  });
+  const data = await res.json();
+
+  if (!res.ok) {
+    msg.textContent = data.error || "تعذرت الإضافة";
+    return;
+  }
+  e.target.reset();
+  msg.textContent = "تمت إضافة الكوبون ✓";
+  loadCoupons();
+});
+
+loadCoupons();
+
+document.getElementById("resetForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const msg = document.getElementById("rMsg");
+  const link = document.getElementById("rLink");
+  link.hidden = true;
+
+  const res = await fetch("/api/users/reset-link", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email: document.getElementById("rEmail").value })
+  });
+  const data = await res.json();
+
+  if (!res.ok) {
+    msg.textContent = data.error || "تعذر الإنشاء";
+    return;
+  }
+  link.value = location.origin + data.path;
+  link.hidden = false;
+  link.select();
+  msg.textContent = "انسخ الرابط وأرسله للزبون. صالح لمدة ساعة واحدة.";
+});

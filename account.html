@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>حسابي</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1><a href="index.html" class="logo">متجري</a></h1>
+    <a href="index.html" class="back">← رجوع للمتجر</a>
+  </header>
+
+  <main class="checkout">
+    <h2>تغيير كلمة السر</h2>
+    <p id="who"></p>
+    <form id="pwForm">
+      <input id="cur" type="password" placeholder="كلمة السر الحالية" autocomplete="current-password" required>
+      <input id="nw" type="password" placeholder="كلمة السر الجديدة (8 أحرف على الأقل)" autocomplete="new-password" required>
+      <input id="nw2" type="password" placeholder="أعد كتابة الجديدة" autocomplete="new-password" required>
+      <button class="add" type="submit">حفظ</button>
+    </form>
+    <p id="msg"></p>
+  </main>
+
+  <script src="account.js"></script>
+</body>
+</html>

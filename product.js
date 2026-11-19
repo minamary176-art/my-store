@@ -18,7 +18,9 @@ if (!p) {
         <p>⭐ ${p.rating} (${p.ratingCount || 0} تقييم)</p>
         <div class="big-price">${p.price} درهم</div>
         <p>${p.description}</p>
-        <button class="add" onclick="addToCart()">أضف إلى السلة</button>
+        ${p.stock > 0
+          ? `<button class="add" onclick="addToCart()">أضف إلى السلة</button>`
+          : `<button class="add" disabled>نفذت الكمية</button>`}
         <p id="msg"></p>
         <div class="rate">
           <p>قيّم المنتج:</p>
@@ -36,6 +38,10 @@ if (!p) {
 
 function addToCart() {
   const cart = JSON.parse(localStorage.getItem("cart")) || {};
+  if ((cart[p.id] || 0) >= p.stock) {
+  document.getElementById("msg").textContent = "الكمية المتاحة محدودة";
+  return;
+  }
   cart[p.id] = (cart[p.id] || 0) + 1;
   localStorage.setItem("cart", JSON.stringify(cart));
   document.getElementById("msg").textContent = "تمت الإضافة إلى السلة ✓";

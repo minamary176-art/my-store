@@ -42,7 +42,11 @@ form.addEventListener("submit", async e => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name, phone, address, items: cart, coupon: couponCode })
     });
-    if (!res.ok) throw new Error();
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      alert(err.error || "تعذر إرسال الطلب");
+      return;
+    }
     const data = await res.json();
 
     localStorage.removeItem("cart");

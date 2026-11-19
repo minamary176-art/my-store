@@ -254,3 +254,10 @@ header input {
   border-radius: 8px; background: #fff; cursor: pointer; font-size: 1rem;
 }
 .auth-tabs button.active { background: #febd69; border-color: #febd69; font-weight: bold; }
+
+.add:disabled { background: #ccc; color: #777; cursor: not-allowed; }
+.low { color: #b3261e; font-size: .85rem; margin: 4px 0; }
+
+.okmsg { color: #2e7d32; margin-top: 12px; }
+.hint { color: #555; margin-top: 14px; font-size: .9rem; }
+#rLink { margin-top: 10px; }

@@ -45,6 +45,7 @@ db.exec(`
 try { db.exec("ALTER TABLE orders ADD COLUMN coupon TEXT"); } catch {}
 try { db.exec("ALTER TABLE orders ADD COLUMN discount REAL DEFAULT 0"); } catch {}
 try { db.exec("ALTER TABLE orders ADD COLUMN userId INTEGER"); } catch {}
+try { db.exec("ALTER TABLE products ADD COLUMN stock INTEGER DEFAULT 20"); } catch {}
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS coupons (
@@ -285,16 +286,18 @@ app.post("/api/products", requireAdmin, upload.single("image"), (req, res) => {
   const name = (req.body.name || "").trim();
   const category = (req.body.category || "").trim();
   const price = Number(req.body.price);
+  const st = Math.floor(Number(req.body.stock));
+  const stock = Number.isFinite(st) && st >= 0 ? st : 20;
 
   if (!name || !category || !(price > 0)) {
     return res.status(400).json({ error: "بيانات ناقصة" });
   }
 
   const info = db.prepare(
-    "INSERT INTO products (name,category,price,image,description) VALUES (?,?,?,?,?)"
+    "INSERT INTO products (name,category,price,image,description,stock) VALUES (?,?,?,?,?,?)"
   ).run(name, category, price,
         req.file ? req.file.filename : "placeholder.jpeg",
-        req.body.description || "");
+        req.body.description || "", stock);
 
   res.json({ ok: true, id: Number(info.lastInsertRowid) });
 });
@@ -312,8 +315,11 @@ app.put("/api/products/:id", requireAdmin, (req, res) => {
 
   const name = (req.body.name || "").trim() || p.name;
   const price = Number(req.body.price) > 0 ? Number(req.body.price) : p.price;
+  const st = Math.floor(Number(req.body.stock));
+  const stock = Number.isFinite(st) && st >= 0 ? st : p.stock;
 
-  db.prepare("UPDATE products SET name = ?, price = ? WHERE id = ?").run(name, price, id);
+  db.prepare("UPDATE products SET name = ?, price = ?, stock = ? WHERE id = ?")
+    .run(name, price, stock, id);
   res.json({ ok: true });
 });
 
@@ -371,6 +377,15 @@ app.post("/api/orders", (req, res) => {
     const product = catalog.find(p => p.id === Number(id));
     const qty = Math.floor(Number(items[id]));
     if (!product || !(qty > 0) || qty > 99) continue;
+
+    if (product.stock < qty) {
+      return res.status(409).json({
+        error: product.stock > 0
+          ? `المتاح من "${product.name}" هو ${product.stock} فقط`
+          : `نفذت الكمية من "${product.name}"`
+      });
+    }
+
     clean[product.id] = qty;
     total += product.price * qty;
   }
@@ -389,14 +404,30 @@ app.post("/api/orders", (req, res) => {
   }
 
   const number = Date.now();
-  db.prepare(
-    "INSERT INTO orders (number,name,phone,address,items,total,status,date,coupon,discount,userId) VALUES (?,?,?,?,?,?,?,?,?,?,?)"
-  ).run(number,
-      String(name).slice(0, 100),
-      String(phone).slice(0, 30),
-      String(address).slice(0, 300),
-      JSON.stringify(clean), total, "جديد", new Date().toISOString(),
-      couponCode, discount, req.user ? req.user.id : null);
+
+  db.exec("BEGIN");
+  try {
+    db.prepare(
+      "INSERT INTO orders (number,name,phone,address,items,total,status,date,coupon,discount,userId) VALUES (?,?,?,?,?,?,?,?,?,?,?)"
+    ).run(number,
+          String(name).slice(0, 100),
+          String(phone).slice(0, 30),
+          String(address).slice(0, 300),
+          JSON.stringify(clean), total, "جديد", new Date().toISOString(),
+          couponCode, discount, req.user ? req.user.id : null);
+
+    const dec = db.prepare(
+      "UPDATE products SET stock = stock - ? WHERE id = ? AND stock >= ?"
+    );
+    for (const id of Object.keys(clean)) {
+      const r = dec.run(clean[id], Number(id), clean[id]);
+      if (r.changes === 0) throw new Error("stock");
+    }
+    db.exec("COMMIT");
+  } catch (e) {
+    db.exec("ROLLBACK");
+    return res.status(409).json({ error: "نفدت الكمية من أحد المنتجات، حدّث السلة" });
+  }
 
   res.json({ ok: true, number, total, discount });
 });
@@ -446,6 +477,110 @@ app.get("/api/my-orders", (req, res) => {
   ).all(req.user.id);
 
   res.json(rows.map(o => ({ ...o, items: JSON.parse(o.items) })));
+});
+
+app.get("/api/coupons", requireAdmin, (req, res) => {
+  res.json(db.prepare("SELECT * FROM coupons ORDER BY code").all());
+});
+
+app.post("/api/coupons", requireAdmin, (req, res) => {
+  const code = String(req.body.code || "").trim().toUpperCase();
+  const percent = Math.floor(Number(req.body.percent));
+
+  if (!/^[A-Z0-9_-]{3,20}$/.test(code) || !(percent >= 1 && percent <= 90)) {
+    return res.status(400).json({
+      error: "الكود 3 إلى 20 حرفاً إنجليزياً أو رقماً، والنسبة من 1 إلى 90"
+    });
+  }
+
+  try {
+    db.prepare("INSERT INTO coupons (code,percent) VALUES (?,?)").run(code, percent);
+  } catch {
+    return res.status(409).json({ error: "هذا الكود موجود من قبل" });
+  }
+  res.json({ ok: true });
+});
+
+app.put("/api/coupons/:code", requireAdmin, (req, res) => {
+  const info = db.prepare("UPDATE coupons SET active = ? WHERE code = ?")
+    .run(req.body.active ? 1 : 0, String(req.params.code).toUpperCase());
+  if (info.changes === 0) return res.status(404).json({ error: "الكوبون غير موجود" });
+  res.json({ ok: true });
+});
+
+app.delete("/api/coupons/:code", requireAdmin, (req, res) => {
+  const info = db.prepare("DELETE FROM coupons WHERE code = ?")
+    .run(String(req.params.code).toUpperCase());
+  if (info.changes === 0) return res.status(404).json({ error: "الكوبون غير موجود" });
+  res.json({ ok: true });
+});
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS reset_tokens (
+    tokenHash TEXT PRIMARY KEY,
+    userId INTEGER NOT NULL,
+    expires INTEGER NOT NULL
+  )
+`);
+
+const validPassword = p => p.length >= 8 && p.length <= 200;
+
+app.post("/api/change-password", (req, res) => {
+  if (!req.user) return res.status(401).json({ error: "سجّل الدخول أولاً" });
+
+  const key = "pw" + req.user.id;
+  if (tooMany(key)) {
+    return res.status(429).json({ error: "محاولات كثيرة، حاول بعد 15 دقيقة" });
+  }
+
+  const current = String(req.body.current || "");
+  const next = String(req.body.next || "");
+  if (!validPassword(next)) {
+    return res.status(400).json({ error: "كلمة السر الجديدة 8 أحرف على الأقل" });
+  }
+
+  const u = db.prepare("SELECT * FROM users WHERE id = ?").get(req.user.id);
+  if (!u || !checkPassword(current, u.password)) {
+    (attempts[key] = attempts[key] || []).push(Date.now());
+    return res.status(401).json({ error: "كلمة السر الحالية غير صحيحة" });
+  }
+
+  db.prepare("UPDATE users SET password = ? WHERE id = ?").run(hashPassword(next), u.id);
+  db.prepare("DELETE FROM sessions WHERE userId = ?").run(u.id);
+  startSession(req, res, u.id);
+  res.json({ ok: true });
+});
+
+app.post("/api/users/reset-link", requireAdmin, (req, res) => {
+  const email = String(req.body.email || "").trim().toLowerCase();
+  const u = db.prepare("SELECT id FROM users WHERE email = ?").get(email);
+  if (!u) return res.status(404).json({ error: "لا يوجد حساب بهذا البريد" });
+
+  db.prepare("DELETE FROM reset_tokens WHERE userId = ? OR expires < ?").run(u.id, Date.now());
+
+  const token = crypto.randomBytes(24).toString("hex");
+  db.prepare("INSERT INTO reset_tokens (tokenHash,userId,expires) VALUES (?,?,?)")
+    .run(sha(token), u.id, Date.now() + 3600000);
+
+  res.json({ ok: true, path: "/reset.html?token=" + token });
+});
+
+app.post("/api/reset", (req, res) => {
+  const password = String(req.body.password || "");
+  if (!validPassword(password)) {
+    return res.status(400).json({ error: "كلمة السر 8 أحرف على الأقل" });
+  }
+
+  const row = db.prepare("SELECT * FROM reset_tokens WHERE tokenHash = ?")
+    .get(sha(String(req.body.token || "")));
+  if (!row || row.expires < Date.now()) {
+    return res.status(400).json({ error: "الرابط غير صالح أو انتهت صلاحيته" });
+  }
+
+  db.prepare("UPDATE users SET password = ? WHERE id = ?").run(hashPassword(password), row.userId);
+  db.prepare("DELETE FROM reset_tokens WHERE userId = ?").run(row.userId);
+  db.prepare("DELETE FROM sessions WHERE userId = ?").run(row.userId);
+  res.json({ ok: true });
 });
 
 const PORT = process.env.PORT || 3000;

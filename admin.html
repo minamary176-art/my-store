@@ -27,6 +27,7 @@
       <input id="newCat" placeholder="تصنيف جديد" hidden>
 
       <input name="price" type="number" min="1" placeholder="السعر بالدرهم" required>
+      <input name="stock" type="number" min="0" value="20" placeholder="الكمية المتاحة" required>
       <input name="description" placeholder="وصف قصير">
       <input name="image" type="file" accept="image/*">
       <button class="add" type="submit">إضافة المنتج</button>
@@ -36,7 +37,24 @@
     <h2>المنتجات (<span id="pcount">0</span>)</h2>
     
     <div id="plist"></div>
-    
+
+    <h2>كوبونات الخصم</h2>
+    <form id="couponForm" class="product-form">
+      <input id="cCode" placeholder="الكود (حروف إنجليزية وأرقام)" required>
+      <input id="cPercent" type="number" min="1" max="90" placeholder="نسبة الخصم %" required>
+      <button class="add" type="submit">إضافة كوبون</button>
+      <p id="cMsg"></p>
+    </form>
+    <div id="clist"></div>
+
+    <h2>إعادة تعيين كلمة سر زبون</h2>
+    <form id="resetForm" class="product-form">
+      <input id="rEmail" type="email" placeholder="بريد الزبون" required>
+      <button class="add" type="submit">إنشاء رابط إعادة التعيين</button>
+      <input id="rLink" readonly hidden>
+      <p id="rMsg"></p>
+    </form>
+
     <h2>الطلبات (<span id="count">0</span>)</h2>
     <button class="del" id="clearAll">حذف كل الطلبات</button>
     <div id="orders"></div>
