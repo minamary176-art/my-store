@@ -7,13 +7,19 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <header>
-    <h1>متجري</h1>
+  <header class="topbar">
+    <h1><a href="index.html" class="logo">متجري</a></h1>
     <input id="search" placeholder="ابحث عن منتج...">
+
+    <nav class="nav">
+      <a href="track.html">تتبّع طلبك</a>
+      <a href="my-orders.html">طلباتي</a>
+      <a href="account.html">حسابي</a>
+      <a href="admin.html">⚙️ الإدارة</a>
+      <a href="login.html" id="authLink">دخول</a>
+    </nav>
+
     <button id="cartBtn">🛒 <span id="cartCount">0</span></button>
-    <a href="track.html" class="back">تتبع طلبك</a>
-    <a href="login.html" id="authLink" class="back">دخول</a>
-    <a href="my-orders.html" class="back">طلباتي</a>
   </header>
 
   <aside id="cart">

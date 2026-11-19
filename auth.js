@@ -7,7 +7,7 @@
     const { user } = await res.json();
 
     if (user) {
-      link.textContent = "مرحباً " + user.name + " | خروج";
+      link.textContent = "مرحباً " + user.name + "|خروج";
       link.href = "#";
       link.onclick = async e => {
         e.preventDefault();
